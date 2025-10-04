@@ -4,9 +4,9 @@
 
 ## 주요 기능
 
-- 🤖 **카카오톡 챗봇 스킬**: 카카오톡 메시지 수신 시 알림 받기
-- 📤 **메시지 자동 전송**: POST 요청으로 메시지 내용을 받아 Playwright를 통해 카카오톡 전송
-- 🐳 **Docker 지원**: 컨테이너화된 배포 환경
+- **카카오톡 챗봇 스킬**: 카카오톡 메시지 수신 시 알림 받기
+- **메시지 자동 전송**: POST 요청으로 메시지 내용을 받아 Playwright를 통해 카카오톡 전송
+- **Docker 지원**: 컨테이너화된 배포 환경
 
 ## 기술 스택
 
@@ -42,23 +42,17 @@ src/
    pnpm install
    ```
 
-2. **환경 변수 설정**
-   ```bash
-   cp env.example .env
-   # .env 파일을 편집하여 필요한 환경 변수 설정
-   ```
-
-3. **개발 서버 실행**
+2. **개발 서버 실행**
    ```bash
    pnpm dev
    ```
 
-4. **빌드**
+3. **빌드**
    ```bash
    pnpm build
    ```
 
-5. **프로덕션 실행**
+4. **프로덕션 실행**
    ```bash
    pnpm start
    ```
@@ -85,10 +79,6 @@ src/
 ### 헬스체크
 - `GET /api/health` - 서버 상태 확인
 
-### 챗봇 스킬
-- `POST /api/chatbot/skill` - 카카오톡 챗봇 스킬 처리
-- `POST /api/chatbot/notifications/setup` - 알림 설정
-
 ### 메시지 전송
 - `POST /api/message/send` - 카카오톡 메시지 전송
 - `GET /api/message/status/:messageId` - 메시지 전송 상태 확인
@@ -108,34 +98,12 @@ curl -X POST http://localhost:3000/api/message/send \
   }'
 ```
 
-### 카카오톡 챗봇 스킬 요청
-
-```bash
-curl -X POST http://localhost:3000/api/chatbot/skill \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userRequest": {
-      "utterance": "안녕하세요",
-      "user": {
-        "id": "user123",
-        "type": "accountId"
-      }
-    },
-    "action": {
-      "name": "action_name"
-    }
-  }'
-```
-
 ## 환경 변수
 
 | 변수명 | 설명 | 기본값 |
 |--------|------|--------|
 | `NODE_ENV` | 실행 환경 | `development` |
 | `PORT` | 서버 포트 | `3000` |
-| `LOG_LEVEL` | 로그 레벨 | `info` |
-| `KAKAO_API_KEY` | 카카오 API 키 | - |
-| `WEBHOOK_URL` | 웹훅 URL | - |
 
 ## 개발 가이드
 
