@@ -1,0 +1,53 @@
+name: TypeScript Linting
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "src/**"
+      - "*.ts"
+      - "*.js"
+      - "package.json"
+      - "tsconfig.json"
+      - "biome.json"
+  pull_request:
+    paths:
+      - "src/**"
+      - "*.ts"
+      - "*.js"
+      - "package.json"
+      - "tsconfig.json"
+      - "biome.json"
+
+concurrency:
+  group: ${{github.workflow}}-${{github.ref}}
+  cancel-in-progress: true
+
+jobs:
+  biome-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "pnpm"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run Biome Lint
+        run: pnpm lint
+
+      - name: Run Biome Format Check
+        run: pnpm format --check
