@@ -5,6 +5,7 @@
 ## 주요 기능
 
 - **카카오톡 챗봇 스킬**: 카카오톡 메시지 수신 시 알림 받기
+- **사용자 정보 전송**: 챗봇에서 받은 사용자 정보를 외부 서버로 POST 요청
 - **메시지 자동 전송**: POST 요청으로 메시지 내용을 받아 Playwright를 통해 카카오톡 전송
 - **Docker 지원**: 컨테이너화된 배포 환경
 
@@ -28,7 +29,8 @@ src/
 │   ├── message.ts          # 메시지 전송 엔드포인트
 │   └── health.ts           # 헬스체크 엔드포인트
 ├── services/               # 비즈니스 로직
-│   └── kakaotalk.service.ts # 카카오톡 서비스
+│   ├── kakaotalk.service.ts # 카카오톡 자동화 서비스
+│   └── user-info.service.ts # 사용자 정보 전송 서비스
 └── utils/                  # 유틸리티
     └── logger.ts           # 로깅 설정
 ```
@@ -79,12 +81,66 @@ src/
 ### 헬스체크
 - `GET /api/health` - 서버 상태 확인
 
+### 챗봇 스킬
+- `POST /api/chatbot/skill` - 카카오톡 챗봇 스킬 요청 처리
+- `GET /api/chatbot/test-connection` - 사용자 정보 서버 연결 테스트
+- `POST /api/chatbot/notifications/setup` - 알림 설정
+
 ### 메시지 전송
 - `POST /api/message/send` - 카카오톡 메시지 전송
 - `GET /api/message/status/:messageId` - 메시지 전송 상태 확인
 - `GET /api/message/history` - 메시지 전송 이력 조회
 
 ## 사용 예시
+
+### 챗봇 스킬 요청 (카카오톡에서 자동 호출)
+
+카카오톡 챗봇에서 사용자가 메시지를 보내면 다음과 같은 JSON이 서버로 전송됩니다:
+
+```json
+{
+  "intent": {
+    "id": "l4mw9l01x4kul611vtly1w9b",
+    "name": "블록 이름"
+  },
+  "userRequest": {
+    "timezone": "Asia/Seoul",
+    "params": {
+      "ignoreMe": "true"
+    },
+    "block": {
+      "id": "l4mw9l01x4kul611vtly1w9b",
+      "name": "블록 이름"
+    },
+    "utterance": "발화 내용",
+    "lang": null,
+    "user": {
+      "id": "363512",
+      "type": "accountId",
+      "properties": {}
+    }
+  },
+  "bot": {
+    "id": "68cbb775539054197042f1ab",
+    "name": "봇 이름"
+  },
+  "action": {
+    "name": "kjjj3jtdi6",
+    "clientExtra": null,
+    "params": {},
+    "id": "nhx57fsbrkdbh8yg5ccdyb88",
+    "detailParams": {}
+  }
+}
+```
+
+서버는 이 정보를 받아서 사용자 정보를 외부 서버로 POST 요청합니다. 현재는 시뮬레이션 모드로 로그에만 출력됩니다.
+
+### 사용자 정보 서버 연결 테스트
+
+```bash
+curl -X GET http://localhost:3000/api/chatbot/test-connection
+```
 
 ### 메시지 전송 요청
 
@@ -104,6 +160,9 @@ curl -X POST http://localhost:3000/api/message/send \
 |--------|------|--------|
 | `NODE_ENV` | 실행 환경 | `development` |
 | `PORT` | 서버 포트 | `3000` |
+| `LOG_LEVEL` | 로그 레벨 | `info` |
+| `USER_INFO_SERVER_URL` | 사용자 정보 전송 서버 URL | `http://localhost:8080/api/users` |
+| `USER_INFO_SERVER_TIMEOUT` | 서버 연결 타임아웃 (ms) | `5000` |
 
 ## 개발 가이드
 
