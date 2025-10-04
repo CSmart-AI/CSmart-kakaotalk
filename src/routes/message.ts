@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { logger } from "../utils/logger";
 import { KakaoTalkService } from "../services/kakaotalk.service";
+import { logger } from "../utils/logger";
 
 const router: Router = Router();
 const kakaoTalkService = new KakaoTalkService();
@@ -13,6 +13,7 @@ const messageSchema = z.object({
   messageType: z.enum(["text", "image", "file"]).default("text"),
   imageUrl: z.string().url().optional(),
   fileName: z.string().optional(),
+  chatId: z.string().min(1, "채팅방 ID는 필수입니다."),
 });
 
 /**
@@ -28,16 +29,20 @@ router.post("/send", async (req, res) => {
       recipient: validatedData.recipient,
       messageType: validatedData.messageType,
       messageLength: validatedData.message.length,
+      chatId: validatedData.chatId,
     });
 
     // Playwright를 통한 카카오톡 메시지 전송
-    const result = await kakaoTalkService.sendMessage({
-      recipient: validatedData.recipient,
-      message: validatedData.message,
-      messageType: validatedData.messageType,
-      imageUrl: validatedData.imageUrl || undefined,
-      fileName: validatedData.fileName || undefined,
-    });
+    const result = await kakaoTalkService.sendMessage(
+      {
+        recipient: validatedData.recipient,
+        message: validatedData.message,
+        messageType: validatedData.messageType,
+        imageUrl: validatedData.imageUrl || undefined,
+        fileName: validatedData.fileName || undefined,
+      },
+      validatedData.chatId
+    );
 
     res.json({
       success: true,
