@@ -17,7 +17,6 @@ export interface UserInfo {
  */
 export class UserInfoService {
   private readonly serverUrl: string;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private readonly timeout: number;
 
   constructor() {
