@@ -94,7 +94,7 @@ export class KakaoTalkService {
   private async initBrowser(): Promise<Browser> {
     if (!this.browser) {
       this.browser = await chromium.launch({
-        headless: false, // 디버깅을 위해 브라우저 창 표시
+        headless: true, // 디버깅을 위해 브라우저 창 표시
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
