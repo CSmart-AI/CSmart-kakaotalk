@@ -92,27 +92,40 @@ router.get("/status/:messageId", async (req, res) => {
 });
 
 /**
- * 메시지 전송 이력 조회 엔드포인트
+ * 카카오톡에서 채팅 목록을 가져와서 자동 저장하는 엔드포인트
+ * POST 요청으로 카카오톡 API에서 채팅 목록을 가져와서 자동으로 저장
  */
-router.get("/history", (req, res) => {
+router.post("/chat-list", async (_req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    logger.info("카카오톡에서 채팅 목록 가져오기 및 자동 저장 요청");
 
-    logger.info("메시지 이력 조회 요청", { page, limit });
+    // 카카오톡에서 채팅 목록을 가져와서 자동으로 저장
+    const result = await kakaoTalkService.fetchAndSaveChatList();
 
-    // 메시지 이력 조회 로직 구현
+    if (!result.success) {
+      res.status(400).json({
+        success: false,
+        error: result.error || "카카오톡에서 채팅 목록을 가져오고 저장하는데 실패했습니다.",
+      });
+      return;
+    }
+
     res.json({
-      messages: [],
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total: 0,
+      success: true,
+      message: "카카오톡에서 채팅 목록을 성공적으로 가져와서 저장했습니다.",
+      data: {
+        id: result.id,
+        savedAt: new Date().toISOString(),
+        totalCount: result.data?.items.length || 0,
+        chatList: result.data,
       },
     });
   } catch (error) {
-    logger.error("메시지 이력 조회 중 오류 발생:", error);
+    logger.error("카카오톡 채팅 목록 가져오기 및 자동 저장 중 오류 발생:", error);
     res.status(500).json({
-      error: "메시지 이력 조회 중 오류가 발생했습니다.",
+      error: "Internal server error",
+      message: "카카오톡에서 채팅 목록을 가져오고 저장하는 중 오류가 발생했습니다.",
+      details: error instanceof Error ? error.message : "Unknown error",
     });
   }
 });

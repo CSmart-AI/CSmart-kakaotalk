@@ -144,34 +144,4 @@ router.get("/test-connection", async (_req, res) => {
   }
 });
 
-/**
- * 카카오톡 알림 설정 엔드포인트
- */
-router.post("/notifications/setup", (req, res) => {
-  try {
-    const { webhookUrl, userId } = req.body;
-
-    if (!webhookUrl || !userId) {
-      res.status(400).json({
-        error: "webhookUrl과 userId는 필수입니다.",
-      });
-      return;
-    }
-
-    // 알림 설정 로직 구현
-    logger.info("알림 설정 요청", { webhookUrl, userId });
-
-    res.json({
-      message: "알림이 성공적으로 설정되었습니다.",
-      webhookUrl,
-      userId,
-    });
-  } catch (error) {
-    logger.error("알림 설정 중 오류 발생:", error);
-    res.status(500).json({
-      error: "알림 설정 중 오류가 발생했습니다.",
-    });
-  }
-});
-
 export { router as chatbotRouter };

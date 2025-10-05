@@ -16,6 +16,67 @@ export interface SendMessageResult {
   timestamp: Date;
 }
 
+// 카카오톡 채팅 목록 관련 인터페이스
+export interface TalkUser {
+  status_message: string;
+  active: boolean;
+  profile_image_url: string;
+  chat_id: string;
+  user_type: number;
+  nickname: string;
+  original_profile_image_url: string;
+  id: string;
+  full_profile_image_url: string;
+}
+
+export interface ChatItem {
+  talk_user: TalkUser;
+  last_seen_log_id: string;
+  created_at: number;
+  last_message: string;
+  is_replied: boolean;
+  is_read: boolean;
+  unread_count: number;
+  need_manager_confirm: boolean;
+  is_deleted: boolean;
+  updated_at: number;
+  id: string;
+  assignee_id: number;
+  last_log_id: string;
+  is_done: boolean;
+  user_last_seen_log_id: string;
+  version: number;
+  last_log_send_at: number;
+  is_blocked: boolean;
+  is_starred: boolean;
+  is_user_left: boolean;
+  profile_id: string;
+  encoded_profile_id: string;
+  ai_flag: boolean;
+  name: string;
+  chat_label_ids: string[];
+  is_friend: boolean;
+  add_msg_layer_status?: string;
+  check_add_friend_message?: boolean;
+}
+
+export interface ChatListResponse {
+  items: ChatItem[];
+  has_next: boolean;
+}
+
+export interface SaveChatListRequest {
+  chatList: ChatItem[];
+  saved_at: Date;
+}
+
+export interface ChatListStorage {
+  id: string;
+  chat_list: ChatItem[];
+  saved_at: Date;
+  total_count: number;
+}
+
 /**
  * 카카오톡 메시지 전송 서비스
  * Playwright를 사용하여 headless 브라우저로 카카오톡 웹에서 메시지 전송
@@ -23,6 +84,9 @@ export interface SendMessageResult {
 export class KakaoTalkService {
   private browser: Browser | null = null;
   private readonly baseChatUrl = "https://center-pf.kakao.com/_TcdTn/chats/";
+
+  // 메모리 기반 채팅 목록 저장소 (실제 프로덕션에서는 데이터베이스 사용 권장)
+  private chatListStorage: ChatListStorage[] = [];
 
   /**
    * 브라우저 인스턴스 초기화
@@ -296,6 +360,267 @@ export class KakaoTalkService {
     } catch (error) {
       logger.error("파일 첨부 실패:", error);
       throw error;
+    }
+  }
+
+  /**
+   * 카카오톡 API에서 채팅 목록 가져오기
+   * @returns 카카오톡 채팅 목록 데이터
+   */
+  async fetchChatList(): Promise<{ success: boolean; data?: ChatListResponse; error?: string }> {
+    try {
+      logger.info("카카오톡 API에서 채팅 목록 가져오기 시작");
+
+      const response = await fetch(
+        "https://center-pf.kakao.com/api/profiles/_TcdTn/chats/search?size=100",
+        {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "accept-language": "ko-KR,ko;q=0.9,en;q=0.8,en-US;q=0.7",
+            "content-type": "application/json",
+            priority: "u=1, i",
+            "sec-ch-ua": '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"macOS"',
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-origin",
+            "x-kakao-rocketapiversion": "19",
+            referer: "https://center-pf.kakao.com/_TcdTn/chats",
+            cookie:
+              "webid=4996617d457b42b48459748e335c408f; webid_ts=1741872094440; _karb=N7PmH56c-oVpf8He_1746702932158; _kadu=ydc7R75Do4pit0Ho9DRjJvKHmLZs_1746607248; _ga_MS10Z6SM95=GS2.1.s1756367305$o3$g0$t1756367305$j60$l0$h0; _pfdl=y; _pn2859988199_af_hint=y; kd_lang=ko; _clck=1gyk0hu%5E2%5Efzf%5E0%5E1959; _ga_QD3JP8QSW2=GS2.1.s1758182238$o2$g0$t1758183777$j60$l0$h0; _ga=GA1.2.1268595154.1747131163; _gid=GA1.2.1390150880.1759573662; __T_=1; __T_SECURE=1; JSESSIONID=Zc2Ck5hZu0SuRijLbgnrEwTno4YTgvDDzGrcxvd8; _kawask=dbea5084-e5ab-4fa2-a64e-7864d4ae7e8f; _kau=8b84a9d0ba070680a24df0bceeecf34fa04fc0a68be1e8826ba0d23449ed53af9e1f2c4397cd517eade475488a595df6a41d4859296cc3d6c292d79789d6c0f8588efaa283e8da6b97042dbf0456073d66f58aafa3eddc6fcca967f8c364339a84808c47c7538af2666aae2a42897e8d83fc0f857c2b1ee0bd00593338383031373733343936393638353233373834303539303336313734303639e50a1c9fac0bd681ae46ae4091bb0747; _kawlt=L6BWC-FCIy_shgNzO1N_TJMxGF5drxyjBHOXIr08FwMmDWZpVvCPqVgDkVaRen7dOeRAWxD6m4iN8ujbMCGMnapWgbFO56rXzfVMrQXCsZsvcI0ePu8WxzNfKZmHLDH_; _kawltea=1759712998; _karmt=bfuBeJyqwwirFKA6okTQdSZtbGGokbQYBRoG7Oks0V587CVZVaf8uc-V4evqKv2I; _karmtea=1759723798; _kahai=899d7e5e563a9951c101e34d5e9a4a8d3f9d58f17278cabe85d21e1ee9e29974; _gat=1; _T_ANO=JVtSrKBRItwCTgmaVGF1u5hMukSQqDt9q/JbUzhaOvtfYVI04wHrYheRNtOhVUzjwVsXT4AVoLiXH8pP3qqCIGTxE8ScJw950fo7S9EE6080k/tQGYJm3QL6dUjNY0lKPndXXVxTgPCONBnTNMlM3/sx9n0kXfqrOgkWD1JDmwWdlZo4SkHU/rETo9lVBHNV3IHGaVGkDadDaiQVeg10v6peeSK4wV4CAuKZc95x64I+DO4h6ZPO3RwVfdULjPE2CL2CEdyQTJTvsgkGLcOktogJarWK2xI+FbGz9Gmx2d8FXmBCn/bpisf0i1fsHeCnwh8c8fMuB/fA09WS/JmwGg==; _ga_5DK2Q7749V=GS2.2.s1759637399$o9$g1$t1759637466$j60$l0$h0",
+          },
+          body: JSON.stringify({
+            is_blocked: false,
+            status: "progress",
+            keyword: "",
+            labels: [],
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = (await response.json()) as ChatListResponse;
+
+      logger.info("카카오톡 API에서 채팅 목록 가져오기 성공", {
+        itemCount: data.items.length,
+        hasNext: data.has_next,
+      });
+
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      logger.error("카카오톡 API에서 채팅 목록 가져오기 실패:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * 채팅 목록 저장
+   * @param chatList 카카오톡 채팅 목록 데이터
+   * @returns 저장 결과
+   */
+  async saveChatList(
+    chatList: ChatItem[]
+  ): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+      const id = `chatlist_${Date.now()}`;
+      const savedAt = new Date();
+
+      const chatListData: ChatListStorage = {
+        id,
+        chat_list: chatList,
+        saved_at: savedAt,
+        total_count: chatList.length,
+      };
+
+      // 메모리에 저장 (실제 프로덕션에서는 데이터베이스에 저장)
+      this.chatListStorage.push(chatListData);
+
+      logger.info("채팅 목록 저장 완료", {
+        id,
+        totalCount: chatList.length,
+        savedAt: savedAt.toISOString(),
+      });
+
+      return {
+        success: true,
+        id,
+      };
+    } catch (error) {
+      logger.error("채팅 목록 저장 실패:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * 저장된 채팅 목록 조회
+   * @param id 저장된 채팅 목록 ID (선택사항)
+   * @returns 채팅 목록 데이터
+   */
+  async getChatList(
+    id?: string
+  ): Promise<{ success: boolean; data?: ChatListStorage[]; error?: string }> {
+    try {
+      let result: ChatListStorage[];
+
+      if (id) {
+        // 특정 ID의 채팅 목록 조회
+        result = this.chatListStorage.filter((storage) => storage.id === id);
+      } else {
+        // 모든 채팅 목록 조회 (최신 순으로 정렬)
+        result = [...this.chatListStorage].sort(
+          (a, b) => new Date(b.saved_at).getTime() - new Date(a.saved_at).getTime()
+        );
+      }
+
+      logger.info("채팅 목록 조회 완료", {
+        id: id || "all",
+        count: result.length,
+      });
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      logger.error("채팅 목록 조회 실패:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * 최신 채팅 목록 조회
+   * @returns 가장 최근에 저장된 채팅 목록
+   */
+  async getLatestChatList(): Promise<{ success: boolean; data?: ChatListStorage; error?: string }> {
+    try {
+      if (this.chatListStorage.length === 0) {
+        return {
+          success: false,
+          error: "저장된 채팅 목록이 없습니다.",
+        };
+      }
+
+      // 가장 최근에 저장된 채팅 목록 반환
+      const latest = this.chatListStorage.reduce((latest, current) =>
+        new Date(current.saved_at) > new Date(latest.saved_at) ? current : latest
+      );
+
+      logger.info("최신 채팅 목록 조회 완료", {
+        id: latest.id,
+        savedAt: latest.saved_at.toISOString(),
+        totalCount: latest.total_count,
+      });
+
+      return {
+        success: true,
+        data: latest,
+      };
+    } catch (error) {
+      logger.error("최신 채팅 목록 조회 실패:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * 카카오톡에서 채팅 목록을 가져와서 자동으로 저장
+   * @returns 저장된 채팅 목록 ID와 데이터
+   */
+  async fetchAndSaveChatList(): Promise<{
+    success: boolean;
+    id?: string;
+    data?: ChatListResponse;
+    error?: string;
+  }> {
+    try {
+      logger.info("카카오톡에서 채팅 목록 가져오기 및 저장 시작");
+
+      // 카카오톡 API에서 채팅 목록 가져오기
+      const fetchResult = await this.fetchChatList();
+
+      if (!fetchResult.success || !fetchResult.data) {
+        return {
+          success: false,
+          error: fetchResult.error || "채팅 목록을 가져오는데 실패했습니다.",
+        };
+      }
+
+      // 가져온 채팅 목록을 저장
+      const saveResult = await this.saveChatList(fetchResult.data.items);
+
+      if (!saveResult.success) {
+        return {
+          success: false,
+          error: saveResult.error || "채팅 목록 저장에 실패했습니다.",
+        };
+      }
+
+      logger.info("카카오톡 채팅 목록 가져오기 및 저장 완료", {
+        id: saveResult.id,
+        itemCount: fetchResult.data.items.length,
+      });
+
+      return {
+        success: true,
+        id: saveResult.id,
+        data: fetchResult.data,
+      };
+    } catch (error) {
+      logger.error("카카오톡 채팅 목록 가져오기 및 저장 실패:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * 채팅 목록 삭제
+   * @param id 삭제할 채팅 목록 ID
+   * @returns 삭제 결과
+   */
+  async deleteChatList(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const initialLength = this.chatListStorage.length;
+      this.chatListStorage = this.chatListStorage.filter((storage) => storage.id !== id);
+
+      if (this.chatListStorage.length === initialLength) {
+        return {
+          success: false,
+          error: "해당 ID의 채팅 목록을 찾을 수 없습니다.",
+        };
+      }
+
+      logger.info("채팅 목록 삭제 완료", { id });
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      logger.error("채팅 목록 삭제 실패:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
     }
   }
 
