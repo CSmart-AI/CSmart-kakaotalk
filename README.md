@@ -61,20 +61,70 @@ src/
 
 ### Docker 환경
 
+#### 환경 변수 설정
+
+Docker 실행 전에 카카오톡 로그인 정보를 환경 변수로 설정해야 합니다:
+
+```bash
+# 환경 변수 설정 (터미널에서)
+export KAKAO_LOGIN_ID="your_kakao_id"
+export KAKAO_LOGIN_PASSWORD="your_kakao_password"
+
+# 또는 .env 파일 생성
+echo "KAKAO_LOGIN_ID=your_kakao_id" > .env
+echo "KAKAO_LOGIN_PASSWORD=your_kakao_password" >> .env
+```
+
+#### Docker Compose 사용 (권장)
+
+1. **서비스 시작**
+   ```bash
+   docker compose up -d
+   ```
+
+2. **서비스 상태 확인**
+   ```bash
+   docker compose ps
+   ```
+
+3. **로그 확인**
+   ```bash
+   docker compose logs -f csmart-kakaotalk
+   ```
+
+4. **헬스체크 확인**
+   ```bash
+   curl http://localhost:3000/api/health
+   ```
+
+5. **서비스 중지**
+   ```bash
+   docker compose down
+   ```
+
+#### 개별 Docker 명령어
+
 1. **Docker 이미지 빌드**
    ```bash
-   pnpm docker:build
+   docker build -t csmart-kakaotalk .
    ```
 
 2. **Docker 컨테이너 실행**
    ```bash
-   pnpm docker:run
+   docker run -d \
+     --name csmart-kakaotalk-server \
+     -p 3000:3000 \
+     -e KAKAO_LOGIN_ID="your_kakao_id" \
+     -e KAKAO_LOGIN_PASSWORD="your_kakao_password" \
+     -v $(pwd)/logs:/app/logs \
+     csmart-kakaotalk
    ```
 
-3. **Docker Compose 사용**
-   ```bash
-   docker-compose up -d
-   ```
+#### 중요 사항
+
+- **로그인 세션 유지**: Docker 시작 시 한 번만 카카오톡에 로그인하고, 이후 메시지 전송 시에는 로그인 없이 기존 세션을 재사용합니다.
+- **헬스체크**: `/api/health` 엔드포인트에서 KakaoTalk 서비스의 로그인 상태를 확인할 수 있습니다.
+- **로그 확인**: `./logs/` 디렉토리에서 애플리케이션 로그를 확인할 수 있습니다.
 
 ## API 엔드포인트
 
@@ -156,13 +206,28 @@ curl -X POST http://localhost:3000/api/message/send \
 
 ## 환경 변수
 
-| 변수명 | 설명 | 기본값 |
-|--------|------|--------|
-| `NODE_ENV` | 실행 환경 | `development` |
-| `PORT` | 서버 포트 | `3000` |
-| `LOG_LEVEL` | 로그 레벨 | `info` |
-| `USER_INFO_SERVER_URL` | 사용자 정보 전송 서버 URL | `http://localhost:8080/api/users` |
-| `USER_INFO_SERVER_TIMEOUT` | 서버 연결 타임아웃 (ms) | `5000` |
+| 변수명 | 설명 | 기본값 | 필수 |
+|--------|------|--------|------|
+| `NODE_ENV` | 실행 환경 | `development` | ❌ |
+| `PORT` | 서버 포트 | `3000` | ❌ |
+| `LOG_LEVEL` | 로그 레벨 | `info` | ❌ |
+| `KAKAO_LOGIN_ID` | 카카오톡 로그인 ID | - | ✅ |
+| `KAKAO_LOGIN_PASSWORD` | 카카오톡 로그인 비밀번호 | - | ✅ |
+| `USER_INFO_SERVER_URL` | 사용자 정보 전송 서버 URL | `http://localhost:8080/api/users` | ❌ |
+| `USER_INFO_SERVER_TIMEOUT` | 서버 연결 타임아웃 (ms) | `5000` | ❌ |
+
+### 환경 변수 설정 예시
+
+```bash
+# .env 파일
+NODE_ENV=production
+PORT=3000
+LOG_LEVEL=info
+KAKAO_LOGIN_ID=your_kakao_id
+KAKAO_LOGIN_PASSWORD=your_kakao_password
+USER_INFO_SERVER_URL=http://your-server.com/api/users
+USER_INFO_SERVER_TIMEOUT=5000
+```
 
 ## 개발 가이드
 

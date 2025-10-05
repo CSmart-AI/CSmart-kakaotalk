@@ -83,18 +83,20 @@ export interface ChatListStorage {
  */
 export class KakaoTalkService {
   private browser: Browser | null = null;
+  private mainPage: Page | null = null;
+  private isLoggedIn = false;
   private readonly baseChatUrl = "https://center-pf.kakao.com/_TcdTn/chats/";
 
   // 메모리 기반 채팅 목록 저장소 (실제 프로덕션에서는 데이터베이스 사용 권장)
   private chatListStorage: ChatListStorage[] = [];
 
   /**
-   * 브라우저 인스턴스 초기화
+   * 브라우저 인스턴스 초기화 및 로그인
    */
   private async initBrowser(): Promise<Browser> {
     if (!this.browser) {
       this.browser = await chromium.launch({
-        headless: true, // 디버깅을 위해 브라우저 창 표시
+        headless: true, // Docker 환경에서는 headless 모드
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
@@ -103,10 +105,48 @@ export class KakaoTalkService {
           "--no-first-run",
           "--no-zygote",
           "--disable-gpu",
+          "--disable-web-security",
+          "--disable-features=VizDisplayCompositor",
         ],
       });
+
+      // 메인 페이지 생성 및 로그인
+      await this.initializeMainPage();
     }
     return this.browser;
+  }
+
+  /**
+   * 메인 페이지 초기화 및 로그인
+   */
+  private async initializeMainPage(): Promise<void> {
+    if (!this.browser) {
+      throw new Error("브라우저가 초기화되지 않았습니다.");
+    }
+
+    try {
+      logger.info("메인 페이지 초기화 시작");
+
+      // 메인 페이지 생성
+      this.mainPage = await this.browser.newPage();
+
+      // 로그인 수행
+      const loginSuccess = await this.loginToKakaoTalk(this.mainPage);
+      if (!loginSuccess) {
+        throw new Error("카카오톡 로그인에 실패했습니다.");
+      }
+
+      this.isLoggedIn = true;
+      logger.info("메인 페이지 초기화 및 로그인 완료");
+    } catch (error) {
+      logger.error("메인 페이지 초기화 실패:", error);
+      this.isLoggedIn = false;
+      if (this.mainPage) {
+        await this.mainPage.close();
+        this.mainPage = null;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -188,43 +228,42 @@ export class KakaoTalkService {
    * @returns 전송 결과
    */
   async sendMessage(messageData: MessageData, chatId: string): Promise<SendMessageResult> {
-    let page: Page | null = null;
+    let tempPage: Page | null = null;
 
     try {
-      const browser = await this.initBrowser();
+      // 브라우저 초기화 (로그인이 되어있지 않으면 로그인 수행)
+      await this.initBrowser();
 
-      // 브라우저가 닫혔는지 확인
-      if (browser.isConnected()) {
-        page = await browser.newPage();
-      } else {
-        // 브라우저가 닫혔다면 새로 초기화
-        this.browser = null;
-        const newBrowser = await this.initBrowser();
-        page = await newBrowser.newPage();
-      }
+      // 로그인 상태 확인
+      if (!this.isLoggedIn || !this.mainPage || this.mainPage.isClosed()) {
+        logger.warn("로그인 세션이 만료되었습니다. 재로그인을 시도합니다.");
+        this.isLoggedIn = false;
+        this.mainPage = null;
 
-      // 카카오톡 로그인
-      const loginSuccess = await this.loginToKakaoTalk(page);
-      if (!loginSuccess) {
-        return {
-          success: false,
-          error: "카카오톡 로그인에 실패했습니다.",
-          timestamp: new Date(),
-        };
+        // 브라우저 재초기화
+        if (this.browser) {
+          await this.browser.close();
+          this.browser = null;
+        }
+        await this.initBrowser();
       }
 
       // 채팅방 URL 구성
       const chatUrl = `${this.baseChatUrl}${chatId}`;
 
-      // 카카오톡 채팅방으로 이동
+      // 메인 페이지에서 새 탭으로 채팅방 열기
       logger.info("카카오톡 채팅방으로 이동", { chatUrl, chatId });
-      await page.goto(chatUrl);
+      if (!this.mainPage) {
+        throw new Error("메인 페이지가 초기화되지 않았습니다.");
+      }
+      tempPage = await this.mainPage.context().newPage();
+      await tempPage.goto(chatUrl);
 
       // 페이지 로딩 대기
-      await page.waitForLoadState("networkidle");
+      await tempPage.waitForLoadState("networkidle");
 
       // 메시지 입력 및 전송
-      await this.inputAndSendMessage(page, messageData);
+      await this.inputAndSendMessage(tempPage, messageData);
 
       logger.info("메시지 전송 성공", {
         recipient: messageData.recipient,
@@ -240,17 +279,24 @@ export class KakaoTalkService {
       };
     } catch (error) {
       logger.error("메시지 전송 실패:", error);
+
+      // 로그인 세션 오류인 경우 재로그인 플래그 설정
+      if (error instanceof Error && error.message.includes("로그인")) {
+        this.isLoggedIn = false;
+        this.mainPage = null;
+      }
+
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
         timestamp: new Date(),
       };
     } finally {
-      if (page && !page.isClosed()) {
+      if (tempPage && !tempPage.isClosed()) {
         try {
-          await page.close();
+          await tempPage.close();
         } catch (error) {
-          logger.warn("페이지 닫기 실패:", error);
+          logger.warn("임시 페이지 닫기 실패:", error);
         }
       }
     }
@@ -625,13 +671,56 @@ export class KakaoTalkService {
   }
 
   /**
+   * 서비스 초기화 (Docker 시작 시 호출)
+   */
+  async initialize(): Promise<{ success: boolean; error?: string }> {
+    try {
+      logger.info("KakaoTalk 서비스 초기화 시작");
+
+      // 브라우저 초기화 및 로그인
+      await this.initBrowser();
+
+      if (!this.isLoggedIn) {
+        throw new Error("초기 로그인에 실패했습니다.");
+      }
+
+      logger.info("KakaoTalk 서비스 초기화 완료");
+      return { success: true };
+    } catch (error) {
+      logger.error("KakaoTalk 서비스 초기화 실패:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * 로그인 상태 확인
+   */
+  isServiceReady(): boolean {
+    return this.isLoggedIn && this.mainPage !== null && !this.mainPage.isClosed();
+  }
+
+  /**
    * 브라우저 종료
    */
   async close(): Promise<void> {
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
+    try {
+      if (this.mainPage && !this.mainPage.isClosed()) {
+        await this.mainPage.close();
+        this.mainPage = null;
+      }
+
+      if (this.browser) {
+        await this.browser.close();
+        this.browser = null;
+      }
+
+      this.isLoggedIn = false;
       logger.info("브라우저가 종료되었습니다.");
+    } catch (error) {
+      logger.error("브라우저 종료 중 오류:", error);
     }
   }
 }
