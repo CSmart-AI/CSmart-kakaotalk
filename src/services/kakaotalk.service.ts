@@ -83,6 +83,7 @@ export interface ChatListStorage {
  */
 export class KakaoTalkService {
   private browser: Browser | null = null;
+  private context: any = null;
   private mainPage: Page | null = null;
   private isLoggedIn = false;
   private readonly baseChatUrl = "https://center-pf.kakao.com/_TcdTn/chats/";
@@ -133,18 +134,23 @@ export class KakaoTalkService {
     try {
       logger.info("메인 페이지 초기화 시작");
 
-      // 메인 페이지 생성
-      this.mainPage = await this.browser.newPage();
-
-      // 페이지 설정
-      await this.mainPage.setViewportSize({ width: 1920, height: 1080 });
-      await this.mainPage.setExtraHTTPHeaders({
-        "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8,en-US;q=0.7",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+      // 브라우저 컨텍스트 생성
+      this.context = await this.browser.newContext({
+        viewport: { width: 1920, height: 1080 },
+        extraHTTPHeaders: {
+          "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8,en-US;q=0.7",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+        },
       });
 
+      // 메인 페이지 생성
+      this.mainPage = await this.context.newPage();
+
       // 로그인 수행
+      if (!this.mainPage) {
+        throw new Error("메인 페이지가 생성되지 않았습니다.");
+      }
       const loginSuccess = await this.loginToKakaoTalk(this.mainPage);
       if (!loginSuccess) {
         throw new Error("카카오톡 로그인에 실패했습니다.");
@@ -242,42 +248,43 @@ export class KakaoTalkService {
    * @returns 전송 결과
    */
   async sendMessage(messageData: MessageData, chatId: string): Promise<SendMessageResult> {
-    let tempPage: Page | null = null;
-
     try {
-      // 브라우저 초기화 (로그인이 되어있지 않으면 로그인 수행)
-      await this.initBrowser();
+      // 로그인 상태 확인 - 이미 로그인되어 있으면 브라우저 초기화 생략
+      if (!this.isLoggedIn) {
+        logger.info("브라우저 초기화 필요");
 
-      // 로그인 상태 확인
-      if (!this.isLoggedIn || !this.mainPage || this.mainPage.isClosed()) {
-        logger.warn("로그인 세션이 만료되었습니다. 재로그인을 시도합니다.");
-        this.isLoggedIn = false;
-        this.mainPage = null;
-
-        // 브라우저 재초기화
+        // 기존 브라우저 정리
+        if (this.context) {
+          await this.context.close();
+          this.context = null;
+        }
         if (this.browser) {
           await this.browser.close();
           this.browser = null;
         }
+
+        // 브라우저 초기화 및 로그인
         await this.initBrowser();
+      } else {
+        logger.info("기존 브라우저 세션 사용");
       }
 
-      // 채팅방 URL 구성
-      const chatUrl = `${this.baseChatUrl}${chatId}`;
-
-      // 메인 페이지에서 새 탭으로 채팅방 열기
-      logger.info("카카오톡 채팅방으로 이동", { chatUrl, chatId });
+      // 기존 메인 페이지에서 직접 채팅방으로 이동
       if (!this.mainPage) {
         throw new Error("메인 페이지가 초기화되지 않았습니다.");
       }
-      tempPage = await this.mainPage.context().newPage();
-      await tempPage.goto(chatUrl);
+
+      const chatUrl = `${this.baseChatUrl}${chatId}`;
+      logger.info("카카오톡 채팅방으로 이동", { chatUrl, chatId });
+
+      // 기존 메인 페이지에서 채팅방으로 이동
+      await this.mainPage.goto(chatUrl);
 
       // 페이지 로딩 대기
-      await tempPage.waitForLoadState("networkidle");
+      await this.mainPage.waitForLoadState("networkidle");
 
       // 메시지 입력 및 전송
-      await this.inputAndSendMessage(tempPage, messageData);
+      await this.inputAndSendMessage(this.mainPage, messageData);
 
       logger.info("메시지 전송 성공", {
         recipient: messageData.recipient,
@@ -306,13 +313,6 @@ export class KakaoTalkService {
         timestamp: new Date(),
       };
     } finally {
-      if (tempPage && !tempPage.isClosed()) {
-        try {
-          await tempPage.close();
-        } catch (error) {
-          logger.warn("임시 페이지 닫기 실패:", error);
-        }
-      }
     }
   }
 
@@ -724,6 +724,11 @@ export class KakaoTalkService {
       if (this.mainPage && !this.mainPage.isClosed()) {
         await this.mainPage.close();
         this.mainPage = null;
+      }
+
+      if (this.context) {
+        await this.context.close();
+        this.context = null;
       }
 
       if (this.browser) {

@@ -247,3 +247,96 @@ USER_INFO_SERVER_TIMEOUT=5000
 ## 라이선스
 
 MIT
+
+/api/message/chat-list
+{
+    "success": true,
+    "message": "카카오톡에서 채팅 목록을 성공적으로 가져와서 저장했습니다.",
+    "data": {
+        "id": "chatlist_1759641484321",
+        "savedAt": "2025-10-05T05:18:04.321Z",
+        "totalCount": 2,
+        "chatList": {
+            "items": [
+                {
+                    "talk_user": {
+                        "status_message": "",
+                        "active": true,
+                        "profile_image_url": "",
+                        "chat_id": "4952763873902355",
+                        "user_type": 0,
+                        "nickname": "임경빈",
+                        "original_profile_image_url": "",
+                        "id": "4952763873902355_tuser",
+                        "full_profile_image_url": ""
+                    },
+                    "last_seen_log_id": "3679609246841311233",
+                    "created_at": 1759574173000,
+                    "last_message": "테",
+                    "is_replied": false,
+                    "is_read": true,
+                    "unread_count": 0,
+                    "need_manager_confirm": false,
+                    "is_deleted": false,
+                    "updated_at": 1759580804000,
+                    "id": "4952763873902355",
+                    "assignee_id": 0,
+                    "last_log_id": "3679609246841311233",
+                    "is_done": false,
+                    "user_last_seen_log_id": "3679609246841311233",
+                    "version": 1759580804172,
+                    "last_log_send_at": 1759580804140,
+                    "is_blocked": false,
+                    "is_starred": false,
+                    "is_user_left": false,
+                    "profile_id": "_TcdTn",
+                    "encoded_profile_id": "_TcdTn",
+                    "ai_flag": false,
+                    "name": "임경빈",
+                    "chat_label_ids": [],
+                    "is_friend": true
+                },
+                {
+                    "talk_user": {
+                        "active": true,
+                        "profile_image_url": "",
+                        "chat_id": "4947898629963361",
+                        "user_type": 0,
+                        "nickname": "이성재",
+                        "original_profile_image_url": "",
+                        "id": "4947898629963361_tuser",
+                        "full_profile_image_url": ""
+                    },
+                    "last_seen_log_id": "3663531541889001093",
+                    "created_at": 1754822949000,
+                    "last_message": "http://pf.kakao.com/_tzzAn\r\n\r\n\r\n\r\n안녕하세요, 관리는 제 개별 카카오톡 채널을 통해 진행될 예정입니다. 채널 추가 후 메세지 한번 남겨주시기 바랍니다.",
+                    "is_replied": true,
+                    "is_read": true,
+                    "unread_count": 0,
+                    "need_manager_confirm": false,
+                    "is_deleted": false,
+                    "updated_at": 1757664192000,
+                    "id": "4947898629963361",
+                    "assignee_id": 0,
+                    "last_log_id": "3663531541889001093",
+                    "is_done": false,
+                    "user_last_seen_log_id": "3663531541889001093",
+                    "version": 1757671152143,
+                    "last_log_send_at": 1757664192355,
+                    "is_blocked": false,
+                    "is_starred": false,
+                    "is_user_left": false,
+                    "profile_id": "_TcdTn",
+                    "encoded_profile_id": "_TcdTn",
+                    "ai_flag": false,
+                    "name": "이성재",
+                    "chat_label_ids": [],
+                    "is_friend": false,
+                    "add_msg_layer_status": "close",
+                    "check_add_friend_message": true
+                }
+            ],
+            "has_next": false
+        }
+    }
+}
