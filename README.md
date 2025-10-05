@@ -213,7 +213,7 @@ curl -X POST http://localhost:3000/api/message/send \
 | `LOG_LEVEL` | 로그 레벨 | `info` | ❌ |
 | `KAKAO_LOGIN_ID` | 카카오톡 로그인 ID | - | ✅ |
 | `KAKAO_LOGIN_PASSWORD` | 카카오톡 로그인 비밀번호 | - | ✅ |
-| `USER_INFO_SERVER_URL` | 사용자 정보 전송 서버 URL | `http://localhost:8080/api/users` | ❌ |
+| `BACKEND_SERVER_URL` | 사용자 정보 전송 서버 URL | `http://localhost:8080/api/users` | ❌ |
 | `USER_INFO_SERVER_TIMEOUT` | 서버 연결 타임아웃 (ms) | `5000` | ❌ |
 
 ### 환경 변수 설정 예시
@@ -225,7 +225,7 @@ PORT=3000
 LOG_LEVEL=info
 KAKAO_LOGIN_ID=your_kakao_id
 KAKAO_LOGIN_PASSWORD=your_kakao_password
-USER_INFO_SERVER_URL=http://your-server.com/api/users
+BACKEND_SERVER_URL=http://your-server.com/api/users
 USER_INFO_SERVER_TIMEOUT=5000
 ```
 

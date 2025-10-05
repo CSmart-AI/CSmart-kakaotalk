@@ -126,13 +126,13 @@ router.get("/test-connection", async (_req, res) => {
       res.json({
         success: true,
         message: "사용자 정보 서버 연결 성공",
-        serverUrl: process.env.USER_INFO_SERVER_URL || "http://localhost:8080/api/users",
+        serverUrl: process.env.BACKEND_SERVER_URL || "http://localhost:8080/api/users",
       });
     } else {
       res.status(503).json({
         success: false,
         message: "사용자 정보 서버 연결 실패",
-        serverUrl: process.env.USER_INFO_SERVER_URL || "http://localhost:8080/api/users",
+        serverUrl: process.env.BACKEND_SERVER_URL || "http://localhost:8080/api/users",
       });
     }
   } catch (error) {

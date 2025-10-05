@@ -1,3 +1,4 @@
+import axios, { type AxiosResponse } from "axios";
 import { logger } from "../utils/logger";
 
 // 사용자 정보 인터페이스
@@ -12,6 +13,12 @@ export interface UserInfo {
   actionName: string;
 }
 
+// 서버 응답 인터페이스
+interface UserInfoResponse {
+  success: boolean;
+  message?: string;
+}
+
 /**
  * 사용자 정보를 외부 서버로 전송하는 서비스
  */
@@ -21,7 +28,7 @@ export class UserInfoService {
 
   constructor() {
     // 환경변수에서 서버 URL과 타임아웃 설정
-    this.serverUrl = process.env.USER_INFO_SERVER_URL || "http://localhost:8080/api/users";
+    this.serverUrl = process.env.BACKEND_SERVER_URL || "http://localhost:8080/api/users";
     this.timeout = Number.parseInt(process.env.USER_INFO_SERVER_TIMEOUT || "5000", 10);
   }
 
@@ -51,18 +58,13 @@ export class UserInfoService {
       });
 
       // 실제 서버가 있다면 아래 코드를 사용
-      /*
-      const response: AxiosResponse<UserInfoResponse> = await axios.post(
-        this.serverUrl,
-        userInfo,
-        {
-          timeout: this.timeout,
-          headers: {
-            "Content-Type": "application/json",
-            "User-Agent": "CSmart-KakaoTalk/1.0.0",
-          },
-        }
-      );
+      const response: AxiosResponse<UserInfoResponse> = await axios.post(this.serverUrl, userInfo, {
+        timeout: this.timeout,
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "CSmart-KakaoTalk/1.0.0",
+        },
+      });
 
       if (response.data.success) {
         logger.info("사용자 정보 전송 성공", {
@@ -70,22 +72,13 @@ export class UserInfoService {
           response: response.data,
         });
         return true;
-      } else {
-        logger.warn("사용자 정보 전송 실패", {
-          userId: userInfo.userId,
-          response: response.data,
-        });
-        return false;
       }
-      */
 
-      // 시뮬레이션용 성공 응답
-      logger.info("✅ 사용자 정보 전송 완료 (시뮬레이션)", {
+      logger.warn("사용자 정보 전송 실패", {
         userId: userInfo.userId,
-        message: "사용자 정보가 성공적으로 전송되었습니다.",
+        response: response.data,
       });
-
-      return true;
+      return false;
     } catch (error) {
       logger.error("사용자 정보 전송 중 오류 발생", {
         userId: userInfo.userId,
