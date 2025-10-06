@@ -248,8 +248,9 @@ export class KakaoTalkService {
    * @returns 전송 결과
    */
   async sendMessage(messageData: MessageData, chatId: string): Promise<SendMessageResult> {
+    console.log(this.isLoggedIn, this.mainPage, this.browser, this.context);
     try {
-      // 로그인 상태 확인 - 이미 로그인되어 있으면 브라우저 초기화 생략
+      // 메인 페이지 확인
       if (!this.isLoggedIn) {
         logger.info("브라우저 초기화 필요");
 
@@ -271,6 +272,8 @@ export class KakaoTalkService {
 
       // 기존 메인 페이지에서 직접 채팅방으로 이동
       if (!this.mainPage) {
+        // 브라우저 초기화 및 로그인
+        await this.initBrowser();
         throw new Error("메인 페이지가 초기화되지 않았습니다.");
       }
 
@@ -431,6 +434,18 @@ export class KakaoTalkService {
     try {
       logger.info("카카오톡 API에서 채팅 목록 가져오기 시작");
 
+      // 쿠키를 가져오기 전에 페이지 새로고침
+      if (this.mainPage && !this.mainPage.isClosed()) {
+        logger.info("페이지 새로고침 중...");
+        await this.mainPage.reload({ waitUntil: "networkidle" });
+        logger.info("페이지 새로고침 완료");
+      }
+
+      const cookies = await this.context.cookies();
+      // 쿠키를 "key=value; key2=value2; ..." 형태로 변환
+      const cookieHeader = cookies.map((c: any) => `${c.name}=${c.value}`).join("; ");
+
+      // 실제 카카오톡 api 호출(api reverse)
       const response = await fetch(
         "https://center-pf.kakao.com/api/profiles/_TcdTn/chats/search?size=100",
         {
@@ -448,8 +463,7 @@ export class KakaoTalkService {
             "sec-fetch-site": "same-origin",
             "x-kakao-rocketapiversion": "19",
             referer: "https://center-pf.kakao.com/_TcdTn/chats",
-            cookie:
-              "webid=4996617d457b42b48459748e335c408f; webid_ts=1741872094440; _karb=N7PmH56c-oVpf8He_1746702932158; _kadu=ydc7R75Do4pit0Ho9DRjJvKHmLZs_1746607248; _ga_MS10Z6SM95=GS2.1.s1756367305$o3$g0$t1756367305$j60$l0$h0; _pfdl=y; _pn2859988199_af_hint=y; kd_lang=ko; _clck=1gyk0hu%5E2%5Efzf%5E0%5E1959; _ga_QD3JP8QSW2=GS2.1.s1758182238$o2$g0$t1758183777$j60$l0$h0; _ga=GA1.2.1268595154.1747131163; _gid=GA1.2.1390150880.1759573662; __T_=1; __T_SECURE=1; JSESSIONID=Zc2Ck5hZu0SuRijLbgnrEwTno4YTgvDDzGrcxvd8; _kawask=dbea5084-e5ab-4fa2-a64e-7864d4ae7e8f; _kau=8b84a9d0ba070680a24df0bceeecf34fa04fc0a68be1e8826ba0d23449ed53af9e1f2c4397cd517eade475488a595df6a41d4859296cc3d6c292d79789d6c0f8588efaa283e8da6b97042dbf0456073d66f58aafa3eddc6fcca967f8c364339a84808c47c7538af2666aae2a42897e8d83fc0f857c2b1ee0bd00593338383031373733343936393638353233373834303539303336313734303639e50a1c9fac0bd681ae46ae4091bb0747; _kawlt=L6BWC-FCIy_shgNzO1N_TJMxGF5drxyjBHOXIr08FwMmDWZpVvCPqVgDkVaRen7dOeRAWxD6m4iN8ujbMCGMnapWgbFO56rXzfVMrQXCsZsvcI0ePu8WxzNfKZmHLDH_; _kawltea=1759712998; _karmt=bfuBeJyqwwirFKA6okTQdSZtbGGokbQYBRoG7Oks0V587CVZVaf8uc-V4evqKv2I; _karmtea=1759723798; _kahai=899d7e5e563a9951c101e34d5e9a4a8d3f9d58f17278cabe85d21e1ee9e29974; _gat=1; _T_ANO=JVtSrKBRItwCTgmaVGF1u5hMukSQqDt9q/JbUzhaOvtfYVI04wHrYheRNtOhVUzjwVsXT4AVoLiXH8pP3qqCIGTxE8ScJw950fo7S9EE6080k/tQGYJm3QL6dUjNY0lKPndXXVxTgPCONBnTNMlM3/sx9n0kXfqrOgkWD1JDmwWdlZo4SkHU/rETo9lVBHNV3IHGaVGkDadDaiQVeg10v6peeSK4wV4CAuKZc95x64I+DO4h6ZPO3RwVfdULjPE2CL2CEdyQTJTvsgkGLcOktogJarWK2xI+FbGz9Gmx2d8FXmBCn/bpisf0i1fsHeCnwh8c8fMuB/fA09WS/JmwGg==; _ga_5DK2Q7749V=GS2.2.s1759637399$o9$g1$t1759637466$j60$l0$h0",
+            cookie: cookieHeader,
           },
           body: JSON.stringify({
             is_blocked: false,

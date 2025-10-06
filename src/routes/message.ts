@@ -1,10 +1,18 @@
 import { Router } from "express";
 import { z } from "zod";
-import { KakaoTalkService } from "../services/kakaotalk.service";
+import type { KakaoTalkService } from "../services/kakaotalk.service";
 import { logger } from "../utils/logger";
 
 const router: Router = Router();
-const kakaoTalkService = new KakaoTalkService();
+let kakaoTalkService: KakaoTalkService;
+
+/**
+ * KakaoTalkService 인스턴스 설정 함수
+ * @param service KakaoTalkService 인스턴스
+ */
+export const setKakaoTalkService = (service: KakaoTalkService): void => {
+  kakaoTalkService = service;
+};
 
 // 메시지 전송 요청 스키마
 const messageSchema = z.object({

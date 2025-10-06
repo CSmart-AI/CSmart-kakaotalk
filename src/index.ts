@@ -4,7 +4,7 @@ import express from "express";
 import helmet from "helmet";
 import { chatbotRouter } from "./routes/chatbot";
 import { healthRouter, setKakaoTalkService } from "./routes/health";
-import { messageRouter } from "./routes/message";
+import { messageRouter, setKakaoTalkService as setMessageKakaoTalkService } from "./routes/message";
 import { KakaoTalkService } from "./services/kakaotalk.service";
 import { logger } from "./utils/logger";
 
@@ -19,6 +19,9 @@ const kakaoTalkService = new KakaoTalkService();
 
 // 헬스체크 라우터에 KakaoTalk 서비스 설정
 setKakaoTalkService(kakaoTalkService);
+
+// 메시지 라우터에 KakaoTalk 서비스 설정
+setMessageKakaoTalkService(kakaoTalkService);
 
 // 미들웨어 설정
 app.use(helmet());
