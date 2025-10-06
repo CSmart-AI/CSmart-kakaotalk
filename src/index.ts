@@ -3,8 +3,9 @@ import dotenv from "dotenv";
 import express from "express";
 import helmet from "helmet";
 import { chatbotRouter } from "./routes/chatbot";
-import { healthRouter } from "./routes/health";
-import { messageRouter } from "./routes/message";
+import { healthRouter, setKakaoTalkService } from "./routes/health";
+import { messageRouter, setKakaoTalkService as setMessageKakaoTalkService } from "./routes/message";
+import { KakaoTalkService } from "./services/kakaotalk.service";
 import { logger } from "./utils/logger";
 
 // 환경 변수 로드
@@ -12,6 +13,15 @@ dotenv.config();
 
 const app: express.Application = express();
 const PORT = process.env.PORT || 3000;
+
+// KakaoTalk 서비스 인스턴스 생성
+const kakaoTalkService = new KakaoTalkService();
+
+// 헬스체크 라우터에 KakaoTalk 서비스 설정
+setKakaoTalkService(kakaoTalkService);
+
+// 메시지 라우터에 KakaoTalk 서비스 설정
+setMessageKakaoTalkService(kakaoTalkService);
 
 // 미들웨어 설정
 app.use(helmet());
@@ -59,10 +69,51 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   });
 });
 
+// 서버 시작 및 KakaoTalk 서비스 초기화
+const startServer = async () => {
+  try {
+    // KakaoTalk 서비스 초기화
+    logger.info("KakaoTalk 서비스 초기화 시작...");
+    const initResult = await kakaoTalkService.initialize();
+
+    if (!initResult.success) {
+      logger.error("KakaoTalk 서비스 초기화 실패:", initResult.error);
+      logger.warn("서버는 시작되지만 KakaoTalk 기능이 제한될 수 있습니다.");
+    } else {
+      logger.info("KakaoTalk 서비스 초기화 완료");
+    }
+
+    // 서버 시작
+    app.listen(PORT, () => {
+      logger.info(`서버가 포트 ${PORT}에서 실행 중입니다.`);
+      console.log(`🚀 서버가 http://localhost:${PORT}에서 실행 중입니다.`);
+
+      if (initResult.success) {
+        console.log("✅ KakaoTalk 서비스가 준비되었습니다.");
+      } else {
+        console.log("⚠️  KakaoTalk 서비스 초기화에 실패했습니다.");
+      }
+    });
+
+    // Graceful shutdown 처리
+    process.on("SIGINT", async () => {
+      logger.info("서버 종료 신호를 받았습니다. 정리 작업을 시작합니다...");
+      await kakaoTalkService.close();
+      process.exit(0);
+    });
+
+    process.on("SIGTERM", async () => {
+      logger.info("서버 종료 신호를 받았습니다. 정리 작업을 시작합니다...");
+      await kakaoTalkService.close();
+      process.exit(0);
+    });
+  } catch (error) {
+    logger.error("서버 시작 중 오류 발생:", error);
+    process.exit(1);
+  }
+};
+
 // 서버 시작
-app.listen(PORT, () => {
-  logger.info(`서버가 포트 ${PORT}에서 실행 중입니다.`);
-  console.log(`🚀 서버가 http://localhost:${PORT}에서 실행 중입니다.`);
-});
+startServer();
 
 export default app;

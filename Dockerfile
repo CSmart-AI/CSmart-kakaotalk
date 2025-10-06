@@ -1,32 +1,20 @@
-# Node.js 18 Alpine 이미지 사용
-FROM node:18-alpine
+# Debian 기반 이미지 사용
+FROM node:20-bookworm
 
 # 작업 디렉토리 설정
 WORKDIR /app
 
-# 시스템 패키지 업데이트 및 Playwright 의존성 설치
-RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    freetype-dev \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    && rm -rf /var/cache/apk/*
-
-# Playwright 환경 변수 설정
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
-
 # pnpm 설치
-RUN npm install -g pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # package.json과 pnpm-lock.yaml 복사
 COPY package.json pnpm-lock.yaml* ./
 
 # 의존성 설치
 RUN pnpm install --frozen-lockfile
+
+# Playwright 브라우저 및 시스템 의존성 설치
+RUN pnpm exec playwright install --with-deps chromium
 
 # 소스 코드 복사
 COPY . .
