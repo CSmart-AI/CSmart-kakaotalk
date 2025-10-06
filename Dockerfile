@@ -28,6 +28,9 @@ COPY package.json pnpm-lock.yaml* ./
 # 의존성 설치
 RUN pnpm install --frozen-lockfile
 
+# Playwright 브라우저 설치
+RUN pnpm exec playwright install
+
 # 소스 코드 복사
 COPY . .
 

@@ -12,6 +12,7 @@ services:
       - LOG_LEVEL=info
       - KAKAO_LOGIN_ID=${KAKAO_LOGIN_ID}
       - KAKAO_LOGIN_PASSWORD=${KAKAO_LOGIN_PASSWORD}
+      - BACKEND_SERVER_URL=${BACKEND_SERVER_URL}
     volumes:
       # 로그 디렉토리 마운트
       - ./logs:/app/logs
