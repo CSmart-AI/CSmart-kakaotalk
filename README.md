@@ -71,6 +71,7 @@ Docker 실행 전에 필수 환경 변수를 설정해야 합니다:
 # 카카오톡 로그인 정보 (필수)
 export KAKAO_LOGIN_ID="your_kakao_id"
 export KAKAO_LOGIN_PASSWORD="your_kakao_password"
+export BACKEND_SERVER_URL="http://your-server.com/api/users" # 추후 api endpoint 설정 필요
 ```
 
 **선택적 환경 변수:**
@@ -81,7 +82,6 @@ export PORT="3000"
 export LOG_LEVEL="info"
 
 # 외부 서버 설정
-export BACKEND_SERVER_URL="http://your-server.com/api/users"
 export USER_INFO_SERVER_TIMEOUT="5000"
 ```
 
@@ -143,6 +143,7 @@ EOF
      -p 3000:3000 \
      -e KAKAO_LOGIN_ID="your_kakao_id" \
      -e KAKAO_LOGIN_PASSWORD="your_kakao_password" \
+     -e BACKEND_SERVER_URL="http://your-server.com/api/users" \
      -v $(pwd)/logs:/app/logs \
      csmart-kakaotalk
    ```
