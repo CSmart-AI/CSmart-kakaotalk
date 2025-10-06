@@ -1,4 +1,4 @@
-import { type Browser, type Page, chromium } from "playwright";
+import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
 import { logger } from "../utils/logger";
 
 export interface MessageData {
@@ -83,7 +83,7 @@ export interface ChatListStorage {
  */
 export class KakaoTalkService {
   private browser: Browser | null = null;
-  private context: any = null;
+  private context: BrowserContext | null = null;
   private mainPage: Page | null = null;
   private isLoggedIn = false;
   private readonly baseChatUrl = "https://center-pf.kakao.com/_TcdTn/chats/";
@@ -434,6 +434,24 @@ export class KakaoTalkService {
     try {
       logger.info("카카오톡 API에서 채팅 목록 가져오기 시작");
 
+      // 로그인 상태 확인 및 브라우저 초기화
+      if (!this.isLoggedIn || !this.context) {
+        logger.info("브라우저 초기화 필요 (fetchChatList)");
+
+        // 기존 브라우저 정리
+        if (this.context) {
+          await this.context.close();
+          this.context = null;
+        }
+        if (this.browser) {
+          await this.browser.close();
+          this.browser = null;
+        }
+
+        // 브라우저 초기화 및 로그인
+        await this.initBrowser();
+      }
+
       // 쿠키를 가져오기 전에 페이지 새로고침
       if (this.mainPage && !this.mainPage.isClosed()) {
         logger.info("페이지 새로고침 중...");
@@ -441,7 +459,7 @@ export class KakaoTalkService {
         logger.info("페이지 새로고침 완료");
       }
 
-      const cookies = await this.context.cookies();
+      const cookies = await this.context!.cookies();
       // 쿠키를 "key=value; key2=value2; ..." 형태로 변환
       const cookieHeader = cookies.map((c: any) => `${c.name}=${c.value}`).join("; ");
 
