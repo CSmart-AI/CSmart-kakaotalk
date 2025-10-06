@@ -71,7 +71,7 @@ Docker 실행 전에 필수 환경 변수를 설정해야 합니다:
 # 카카오톡 로그인 정보 (필수)
 export KAKAO_LOGIN_ID="your_kakao_id"
 export KAKAO_LOGIN_PASSWORD="your_kakao_password"
-export BACKEND_SERVER_URL="http://your-server.com/api/users" # 추후 api endpoint 설정 필요
+export BACKEND_SERVER_URL="http://your-server.com/api/users"
 ```
 
 **선택적 환경 변수:**
@@ -92,12 +92,12 @@ cat > .env << EOF
 # 필수 환경 변수
 KAKAO_LOGIN_ID=your_kakao_id
 KAKAO_LOGIN_PASSWORD=your_kakao_password
+BACKEND_SERVER_URL="http://your-server.com/api/users"
 
 # 선택적 환경 변수
 NODE_ENV=production
 PORT=3000
 LOG_LEVEL=info
-BACKEND_SERVER_URL=http://your-server.com/api/users
 USER_INFO_SERVER_TIMEOUT=5000
 EOF
 ```
@@ -105,6 +105,12 @@ EOF
 #### Docker Compose 사용 (권장)
 
 1. **서비스 시작**
+
+  > ⚠️ **주의:**  
+  > `docker compose`(공백 있음)는 Docker Compose v2 이상에서 사용하며,  
+  > `docker-compose`(하이픈 있음)는 Docker Compose v1에서 사용합니다.  
+  > 사용 중인 Docker 버전에 따라 명령어를 선택하세요.
+
    ```bash
    docker compose up -d
    ```
@@ -379,7 +385,7 @@ curl -X POST http://localhost:3000/api/message/chat-list
 | `LOG_LEVEL` | 로그 레벨 | `info` | ❌ |
 | `KAKAO_LOGIN_ID` | 카카오톡 로그인 ID | - | ✅ |
 | `KAKAO_LOGIN_PASSWORD` | 카카오톡 로그인 비밀번호 | - | ✅ |
-| `BACKEND_SERVER_URL` | 사용자 정보 전송 서버 URL | `http://localhost:8080/api/users` | ❌ |
+| `BACKEND_SERVER_URL` | 사용자 정보 전송 서버 URL | `http://localhost:8080/api/users` | ✅ |
 | `USER_INFO_SERVER_TIMEOUT` | 서버 연결 타임아웃 (ms) | `5000` | ❌ |
 
 ### 환경 변수 설정 예시
