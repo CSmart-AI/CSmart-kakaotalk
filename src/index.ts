@@ -24,7 +24,13 @@ setKakaoTalkService(kakaoTalkService);
 setMessageKakaoTalkService(kakaoTalkService);
 
 // 미들웨어 설정
-app.use(helmet());
+// helmet()은 카카오톡 스킬 서버 응답에 문제를 일으킬 수 있으므로 완화
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // 카카오톡 스킬 서버 호환성
+    crossOriginEmbedderPolicy: false,
+  })
+);
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));

@@ -13,10 +13,13 @@ export interface UserInfo {
   actionName: string;
 }
 
-// 서버 응답 인터페이스
+// 서버 응답 인터페이스 (백엔드 실제 응답 구조에 맞춤)
 interface UserInfoResponse {
-  success: boolean;
+  code?: string;
+  isSuccess?: boolean;
+  success?: boolean; // 호환성을 위해 둘 다 체크
   message?: string;
+  result?: string;
 }
 
 /**
@@ -28,7 +31,7 @@ export class UserInfoService {
 
   constructor() {
     // 환경변수에서 서버 URL과 타임아웃 설정
-    this.serverUrl = process.env.BACKEND_SERVER_URL || "http://localhost:8080/api/users";
+    this.serverUrl = process.env.BACKEND_SERVER_URL || "http://localhost:8080/api/kakao/messages";
     this.timeout = Number.parseInt(process.env.USER_INFO_SERVER_TIMEOUT || "5000", 10);
   }
 
@@ -66,7 +69,11 @@ export class UserInfoService {
         },
       });
 
-      if (response.data.success) {
+      // 백엔드 서버 응답 구조: { code, isSuccess, message, result }
+      // isSuccess 또는 success 필드를 체크 (호환성)
+      const isSuccess = response.data.isSuccess ?? response.data.success ?? false;
+
+      if (isSuccess) {
         logger.info("사용자 정보 전송 성공", {
           userId: userInfo.userId,
           response: response.data,
