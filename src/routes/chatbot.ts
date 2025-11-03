@@ -54,11 +54,9 @@ router.post("/skill", async (req, res) => {
     // 요청 데이터 검증
     const validatedData = chatbotSkillSchema.parse(req.body);
 
-    const utterance = validatedData.userRequest.utterance || "";
-
     logger.info("카카오톡 챗봇 스킬 요청 받음", {
       userId: validatedData.userRequest.user.id,
-      utterance: utterance,
+      utterance: validatedData.userRequest.utterance || "";,
       actionName: validatedData.action.name,
       intentName: validatedData.intent.name,
       botName: validatedData.bot.name,
