@@ -45,7 +45,7 @@ const chatbotSkillSchema = z.object({
 /**
  * 카카오톡 챗봇 스킬 엔드포인트
  * 카카오톡에서 메시지가 왔을 때 알림을 받는 기능
- * 
+ *
  * 중요: 카카오톡은 3~5초 내에 응답을 받아야 하므로,
  * 내부 API 호출은 비동기로 처리하고 카카오 응답은 즉시 반환합니다.
  */
@@ -56,7 +56,7 @@ router.post("/skill", async (req, res) => {
 
     logger.info("카카오톡 챗봇 스킬 요청 받음", {
       userId: validatedData.userRequest.user.id,
-      utterance: validatedData.userRequest.utterance || "";,
+      utterance: validatedData.userRequest.utterance || "",
       actionName: validatedData.action.name,
       intentName: validatedData.intent.name,
       botName: validatedData.bot.name,
@@ -82,14 +82,14 @@ router.post("/skill", async (req, res) => {
     // 헤더 설정
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache");
-    
+
     // 응답 전송 (명시적으로 전송)
     res.status(200).send(responseJson);
-    
+
     // 응답 완료 후 로깅 (응답 스트림에 영향 없도록)
     logger.info("✅ 카카오톡 응답 반환 완료", {
       userId: validatedData.userRequest.user.id,
-      utterance: utterance,
+      utterance: validatedData.userRequest.utterance || "",
       responseLength: responseJson.length,
       statusCode: 200,
     });
@@ -130,7 +130,7 @@ router.post("/skill", async (req, res) => {
     };
 
     const errorResponseJson = JSON.stringify(errorResponse);
-    
+
     if (error instanceof z.ZodError) {
       logger.warn("요청 데이터 검증 실패", {
         errors: error.errors,
