@@ -1,4 +1,4 @@
-import { type Browser, type BrowserContext, type Page, chromium } from "playwright";
+import { type Browser, type BrowserContext, type Cookie, type Page, chromium } from "playwright";
 import { logger } from "../utils/logger";
 
 export interface MessageData {
@@ -459,9 +459,9 @@ export class KakaoTalkService {
         logger.info("페이지 새로고침 완료");
       }
 
-      const cookies = await this.context!.cookies();
+      const cookies = (await this.context?.cookies()) ?? [];
       // 쿠키를 "key=value; key2=value2; ..." 형태로 변환
-      const cookieHeader = cookies.map((c: any) => `${c.name}=${c.value}`).join("; ");
+      const cookieHeader = cookies.map((c: Cookie) => `${c.name}=${c.value}`).join("; ");
 
       // 실제 카카오톡 api 호출(api reverse)
       const response = await fetch(
