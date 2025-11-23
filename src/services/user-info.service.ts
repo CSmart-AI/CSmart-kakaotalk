@@ -11,6 +11,7 @@ export interface UserInfo {
   botId: string;
   botName: string;
   actionName: string;
+  channelType?: string;  // ← 추가: ADMIN 또는 TEACHER
 }
 
 // 서버 응답 인터페이스 (백엔드 실제 응답 구조에 맞춤)
@@ -28,11 +29,13 @@ interface UserInfoResponse {
 export class UserInfoService {
   private readonly serverUrl: string;
   private readonly timeout: number;
+  private readonly channelType: string;  // ← 추가
 
   constructor() {
-    // 환경변수에서 서버 URL과 타임아웃 설정
-    this.serverUrl = process.env.BACKEND_SERVER_URL || "http://localhost:8080/api/kakao/messages";
+    // 환경변수에서 서버 URL, 타임아웃, 채널 타입 설정
+    this.serverUrl = process.env.BACKEND_WEBHOOK_URL || "http://localhost:8080/api/kakao/webhook/admin";
     this.timeout = Number.parseInt(process.env.USER_INFO_SERVER_TIMEOUT || "5000", 10);
+    this.channelType = process.env.CHANNEL_TYPE || "ADMIN";  // ← 추가
   }
 
   /**
@@ -42,10 +45,17 @@ export class UserInfoService {
    */
   async sendUserInfo(userInfo: UserInfo): Promise<boolean> {
     try {
+      // CHANNEL_TYPE 추가
+      const payload = {
+        ...userInfo,
+        channelType: this.channelType,  // ← 추가
+      };
+
       logger.info("사용자 정보 전송 시작", {
         userId: userInfo.userId,
         serverUrl: this.serverUrl,
-        userInfo: userInfo,
+        channelType: this.channelType,  // ← 추가
+        userInfo: payload,
       });
 
       // 실제 서버가 없으므로 로그로만 확인
@@ -57,11 +67,11 @@ export class UserInfoService {
           "Content-Type": "application/json",
           "User-Agent": "CSmart-KakaoTalk/1.0.0",
         },
-        body: userInfo,
+        body: payload,  // ← 수정
       });
 
       // 실제 서버가 있다면 아래 코드를 사용
-      const response: AxiosResponse<UserInfoResponse> = await axios.post(this.serverUrl, userInfo, {
+      const response: AxiosResponse<UserInfoResponse> = await axios.post(this.serverUrl, payload, {
         timeout: this.timeout,
         headers: {
           "Content-Type": "application/json",

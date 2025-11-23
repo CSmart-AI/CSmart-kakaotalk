@@ -170,36 +170,135 @@ export class KakaoTalkService {
   }
 
   /**
-   * 카카오톡 웹 로그인 처리
+   * 카카오 계정 로그인 검증 (외부 API용)
+   * @param kakaoId 카카오 계정 아이디
+   * @param kakaoPassword 카카오 계정 비밀번호
+   * @returns 로그인 성공 여부
+   */
+  async verifyKakaoLogin(kakaoId: string, kakaoPassword: string): Promise<boolean> {
+    try {
+      logger.info("카카오 로그인 검증 시작", { kakaoId });
+
+      // 임시 브라우저 인스턴스 생성
+      const tempBrowser = await chromium.launch({
+        headless: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-accelerated-2d-canvas",
+          "--no-first-run",
+          "--no-zygote",
+          "--disable-gpu",
+          "--disable-web-security",
+          "--disable-features=VizDisplayCompositor",
+          "--disable-blink-features=AutomationControlled",
+          "--disable-extensions",
+          "--disable-plugins",
+          "--disable-images",
+          "--disable-javascript-harmony-shipping",
+          "--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        ],
+      });
+
+      const tempContext = await tempBrowser.newContext({
+        viewport: { width: 1920, height: 1080 },
+        extraHTTPHeaders: {
+          "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8,en-US;q=0.7",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+        },
+      });
+
+      const tempPage = await tempContext.newPage();
+
+      try {
+        // 로그인 시도
+        const loginSuccess = await this.loginToKakaoTalkWithCredentials(
+          tempPage,
+          kakaoId,
+          kakaoPassword
+        );
+
+        return loginSuccess;
+      } finally {
+        // 임시 브라우저 정리
+        await tempPage.close();
+        await tempContext.close();
+        await tempBrowser.close();
+      }
+    } catch (error) {
+      logger.error("카카오 로그인 검증 중 오류 발생", error);
+      return false;
+    }
+  }
+
+  /**
+   * 카카오톡 웹 로그인 처리 (환경변수 사용)
    * @param page Playwright 페이지 인스턴스
    */
   private async loginToKakaoTalk(page: Page): Promise<boolean> {
+    const kakaoId = process.env.KAKAO_LOGIN_ID || "";
+    const kakaoPassword = process.env.KAKAO_LOGIN_PASSWORD || "";
+    return this.loginToKakaoTalkWithCredentials(page, kakaoId, kakaoPassword);
+  }
+
+  /**
+   * 카카오톡 웹 로그인 처리 (아이디/비밀번호 파라미터 사용)
+   * @param page Playwright 페이지 인스턴스
+   * @param kakaoId 카카오 계정 아이디
+   * @param kakaoPassword 카카오 계정 비밀번호
+   */
+  private async loginToKakaoTalkWithCredentials(
+    page: Page,
+    kakaoId: string,
+    kakaoPassword: string
+  ): Promise<boolean> {
     try {
       logger.info("카카오톡 웹 로그인 시도");
 
       // 카카오톡 웹 로그인 페이지로 이동
-      await page.goto("https://center-pf.kakao.com/_TcdTn/chats");
+      await page.goto("https://center-pf.kakao.com/_TcdTn/chats", { waitUntil: "networkidle" });
 
-      // 로그인 폼이 있는지 확인
+      // 페이지 로딩 대기
+      await page.waitForTimeout(2000);
+
+      // 이미 로그인된 상태인지 먼저 확인
+      const isAlreadyLoggedIn = await page
+        .locator("#kakaoContent, .list_chat, .profile_area, .chat_list")
+        .isVisible({ timeout: 3000 })
+        .catch(() => false);
+
+      if (isAlreadyLoggedIn) {
+        logger.info("이미 로그인된 상태입니다.");
+        return true;
+      }
+
+      // 로그인 폼이 있는지 확인 (타임아웃 증가)
       const loginIdInput = page.locator("#loginId--1");
       const passwordInput = page.locator("#password--2");
       const loginButton = page.locator("div.confirm_btn > button.btn_g.highlight.submit");
 
       // 로그인 폼이 보이면 로그인 시도
-      if (await loginIdInput.isVisible({ timeout: 5000 })) {
+      const loginFormVisible = await loginIdInput.isVisible({ timeout: 10000 }).catch(() => false);
+      
+      if (loginFormVisible) {
         logger.info("로그인 폼 발견, 자동 로그인 시도");
 
         // 아이디 입력
-        await loginIdInput.fill(process.env.KAKAO_LOGIN_ID || "");
+        await loginIdInput.fill(kakaoId);
+        await page.waitForTimeout(500);
 
         // 비밀번호 입력
-        await passwordInput.fill(process.env.KAKAO_LOGIN_PASSWORD || "");
+        await passwordInput.fill(kakaoPassword);
+        await page.waitForTimeout(500);
 
         // 로그인 버튼 클릭
         await loginButton.click();
 
         // 로그인 완료 대기 (채팅 목록이 로드될 때까지)
         await page.waitForLoadState("networkidle");
+        await page.waitForTimeout(2000);
 
         // 2단계 인증 완료를 기다림 (최대 60초)
         logger.info("2단계 인증 완료를 기다리는 중...");
@@ -214,17 +313,6 @@ export class KakaoTalkService {
           logger.warn("2단계 인증 시간 초과 또는 로그인 실패", error);
           return false;
         }
-      }
-
-      // 이미 로그인된 상태인지 확인
-      const isAlreadyLoggedIn = await page
-        .locator(".list_chat, .profile_area, .chat_list")
-        .isVisible({ timeout: 5000 })
-        .catch(() => false);
-
-      if (isAlreadyLoggedIn) {
-        logger.info("이미 로그인된 상태");
-        return true;
       }
 
       logger.warn("로그인 폼을 찾을 수 없습니다");
@@ -746,6 +834,88 @@ export class KakaoTalkService {
    */
   isServiceReady(): boolean {
     return this.isLoggedIn && this.mainPage !== null && !this.mainPage.isClosed();
+  }
+
+  /**
+   * 새로운 계정으로 로그인 (기존 세션 종료 후 재로그인)
+   * @param kakaoId 카카오 계정 아이디
+   * @param kakaoPassword 카카오 계정 비밀번호
+   * @returns 로그인 성공 여부
+   */
+  async loginWithCredentials(kakaoId: string, kakaoPassword: string): Promise<boolean> {
+    try {
+      logger.info("새로운 계정으로 로그인 시작", { kakaoId });
+
+      // 기존 브라우저 세션 종료
+      await this.close();
+
+      // 브라우저 초기화
+      this.browser = await chromium.launch({
+        headless: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-accelerated-2d-canvas",
+          "--no-first-run",
+          "--no-zygote",
+          "--disable-gpu",
+          "--disable-web-security",
+          "--disable-features=VizDisplayCompositor",
+          "--disable-blink-features=AutomationControlled",
+          "--disable-extensions",
+          "--disable-plugins",
+          "--disable-images",
+          "--disable-javascript-harmony-shipping",
+          "--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        ],
+      });
+
+      // 브라우저 컨텍스트 생성
+      this.context = await this.browser.newContext({
+        viewport: { width: 1920, height: 1080 },
+        extraHTTPHeaders: {
+          "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8,en-US;q=0.7",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+        },
+      });
+
+      // 메인 페이지 생성
+      this.mainPage = await this.context.newPage();
+
+      // 로그인 수행
+      const loginSuccess = await this.loginToKakaoTalkWithCredentials(
+        this.mainPage,
+        kakaoId,
+        kakaoPassword
+      );
+
+      if (loginSuccess) {
+        this.isLoggedIn = true;
+        logger.info("새로운 계정으로 로그인 성공", { kakaoId });
+        return true;
+      } else {
+        this.isLoggedIn = false;
+        logger.warn("새로운 계정으로 로그인 실패", { kakaoId });
+        await this.close();
+        return false;
+      }
+    } catch (error) {
+      logger.error("새로운 계정으로 로그인 중 오류 발생", error);
+      this.isLoggedIn = false;
+      await this.close();
+      return false;
+    }
+  }
+
+  /**
+   * 로그아웃 (브라우저 세션 종료)
+   */
+  async logout(): Promise<void> {
+    logger.info("로그아웃 시작");
+    await this.close();
+    logger.info("로그아웃 완료");
   }
 
   /**
