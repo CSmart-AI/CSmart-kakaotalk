@@ -4,6 +4,7 @@ import express from "express";
 import helmet from "helmet";
 import { chatbotRouter } from "./routes/chatbot";
 import { healthRouter, setKakaoTalkService } from "./routes/health";
+import { kakaoRouter, setKakaoTalkService as setKakaoRouterKakaoTalkService } from "./routes/kakao";
 import { messageRouter, setKakaoTalkService as setMessageKakaoTalkService } from "./routes/message";
 import { KakaoTalkService } from "./services/kakaotalk.service";
 import { logger } from "./utils/logger";
@@ -22,6 +23,9 @@ setKakaoTalkService(kakaoTalkService);
 
 // 메시지 라우터에 KakaoTalk 서비스 설정
 setMessageKakaoTalkService(kakaoTalkService);
+
+// 카카오 라우터에 KakaoTalk 서비스 설정
+setKakaoRouterKakaoTalkService(kakaoTalkService);
 
 // 미들웨어 설정
 // helmet()은 카카오톡 스킬 서버 응답에 문제를 일으킬 수 있으므로 완화
@@ -48,6 +52,7 @@ app.use((req, _res, next) => {
 app.use("/api/chatbot", chatbotRouter);
 app.use("/api/message", messageRouter);
 app.use("/api/health", healthRouter);
+app.use("/api/kakao", kakaoRouter);
 
 // 루트 엔드포인트
 app.get("/", (_req, res) => {
@@ -75,30 +80,21 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   });
 });
 
-// 서버 시작 및 KakaoTalk 서비스 초기화
+// 서버 시작 (자동 로그인 제거 - 동적 로그인 방식)
 const startServer = async () => {
   try {
-    // KakaoTalk 서비스 초기화
-    logger.info("KakaoTalk 서비스 초기화 시작...");
-    const initResult = await kakaoTalkService.initialize();
-
-    if (!initResult.success) {
-      logger.error("KakaoTalk 서비스 초기화 실패:", initResult.error);
-      logger.warn("서버는 시작되지만 KakaoTalk 기능이 제한될 수 있습니다.");
-    } else {
-      logger.info("KakaoTalk 서비스 초기화 완료");
-    }
+    logger.info("서버 시작 준비 중...");
+    logger.info(
+      "⚠️  환경변수 로그인이 비활성화되었습니다. /api/kakao/login 엔드포인트로 로그인하세요."
+    );
 
     // 서버 시작
     app.listen(PORT, () => {
       logger.info(`서버가 포트 ${PORT}에서 실행 중입니다.`);
       console.log(`🚀 서버가 http://localhost:${PORT}에서 실행 중입니다.`);
-
-      if (initResult.success) {
-        console.log("✅ KakaoTalk 서비스가 준비되었습니다.");
-      } else {
-        console.log("⚠️  KakaoTalk 서비스 초기화에 실패했습니다.");
-      }
+      console.log(
+        "⚠️  카카오톡 로그인이 필요합니다. POST /api/kakao/login 엔드포인트를 사용하세요."
+      );
     });
 
     // Graceful shutdown 처리
