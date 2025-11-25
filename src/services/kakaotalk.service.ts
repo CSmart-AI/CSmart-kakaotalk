@@ -281,7 +281,7 @@ export class KakaoTalkService {
 
       // 로그인 폼이 보이면 로그인 시도
       const loginFormVisible = await loginIdInput.isVisible({ timeout: 10000 }).catch(() => false);
-      
+
       if (loginFormVisible) {
         logger.info("로그인 폼 발견, 자동 로그인 시도");
 
@@ -895,12 +895,12 @@ export class KakaoTalkService {
         this.isLoggedIn = true;
         logger.info("새로운 계정으로 로그인 성공", { kakaoId });
         return true;
-      } else {
-        this.isLoggedIn = false;
-        logger.warn("새로운 계정으로 로그인 실패", { kakaoId });
-        await this.close();
-        return false;
       }
+
+      this.isLoggedIn = false;
+      logger.warn("새로운 계정으로 로그인 실패", { kakaoId });
+      await this.close();
+      return false;
     } catch (error) {
       logger.error("새로운 계정으로 로그인 중 오류 발생", error);
       this.isLoggedIn = false;

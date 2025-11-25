@@ -165,6 +165,3 @@ router.post("/logout", async (_req, res) => {
 });
 
 export { router as kakaoRouter };
-
-
-

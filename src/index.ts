@@ -4,8 +4,8 @@ import express from "express";
 import helmet from "helmet";
 import { chatbotRouter } from "./routes/chatbot";
 import { healthRouter, setKakaoTalkService } from "./routes/health";
-import { messageRouter, setKakaoTalkService as setMessageKakaoTalkService } from "./routes/message";
 import { kakaoRouter, setKakaoTalkService as setKakaoRouterKakaoTalkService } from "./routes/kakao";
+import { messageRouter, setKakaoTalkService as setMessageKakaoTalkService } from "./routes/message";
 import { KakaoTalkService } from "./services/kakaotalk.service";
 import { logger } from "./utils/logger";
 
@@ -84,13 +84,17 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 const startServer = async () => {
   try {
     logger.info("서버 시작 준비 중...");
-    logger.info("⚠️  환경변수 로그인이 비활성화되었습니다. /api/kakao/login 엔드포인트로 로그인하세요.");
+    logger.info(
+      "⚠️  환경변수 로그인이 비활성화되었습니다. /api/kakao/login 엔드포인트로 로그인하세요."
+    );
 
     // 서버 시작
     app.listen(PORT, () => {
       logger.info(`서버가 포트 ${PORT}에서 실행 중입니다.`);
       console.log(`🚀 서버가 http://localhost:${PORT}에서 실행 중입니다.`);
-      console.log("⚠️  카카오톡 로그인이 필요합니다. POST /api/kakao/login 엔드포인트를 사용하세요.");
+      console.log(
+        "⚠️  카카오톡 로그인이 필요합니다. POST /api/kakao/login 엔드포인트를 사용하세요."
+      );
     });
 
     // Graceful shutdown 처리
